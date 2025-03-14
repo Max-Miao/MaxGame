@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三消游戏</title>
+    <style>
+        /* 保持原有样式不变 */
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .game-title {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .game-instructions {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 400px;
+            text-align: left;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: white;
+            border-radius: 5px;
+        }
+        #slotContainer {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 5px;
+        }
+        .slot {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #666;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .restart-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        .restart-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1 class="game-title">三消游戏</h1>
+        <div class="game-instructions">
+            <h3>游戏说明：</h3>
+            <p>1. 点击任意可见方块将其移到下方槽位</p>
+            <p>2. 收集三个相同的符号可以消除</p>
+            <p>3. 注意：槽位最多只能放7个方块</p>
+            <p>4. 槽位满时可以点击重新开始</p>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="slotContainer">
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+        </div>
+        <button class="restart-btn" onclick="window.game.restart()">重新开始</button>
+    </div>
+
+    <script>
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.slots = Array.from(document.querySelectorAll('.slot'));
+                this.tileSize = 70;
+                this.padding = 10;
+                this.gridSize = 4;
+                this.overlap = 20;
+                
+                this.canvas.width = this.tileSize * this.gridSize + this.padding * (this.gridSize + 1);
+                this.canvas.height = this.canvas.width;
+                
+                this.tiles = [];
+                this.selectedTiles = [];
+                this.maxSlots = 7;
+                this.animating = false;
+                
+                this.symbols = ['🎯', '⭐', '🎲', '🎨', '🎪', '🎸', '🎭', '🎡'];
+                
+                this.init();
+            }
+
+            init() {
+                this.generateInitialTiles();
+                this.draw();
+                this.setupEventListeners();
+            }
+
+            restart() {
+                // 清空选中的方块
+                this.selectedTiles = [];
+                this.updateSlots();
+
+                // 打乱现有方块
+                this.shuffleTiles();
+
+                // 重新绘制
+                this.draw();
+            }
+
+            shuffleTiles() {
+                // 收集所有现有方块的符号
+                let allSymbols = this.tiles.map(tile => tile.symbol);
+                
+                // 打乱符号顺序
+                for (let i = allSymbols.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allSymbols[i], allSymbols[j]] = [allSymbols[j], allSymbols[i]];
+                }
+
+                // 重新分配符号给方块
+                this.tiles.forEach((tile, index) => {
+                    tile.symbol = allSymbols[index];
+                });
+            }
+
+            generateInitialTiles() {
+                this.tiles = [];
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const count = 2 + Math.floor(Math.random() * 2);
+                        for (let layer = 0; layer < count; layer++) {
+                            const symbol = this.symbols[Math.floor(Math.random() * this.symbols.length)];
+                            const offsetX = layer * this.overlap;
+                            const offsetY = layer * this.overlap;
+                            
+                            this.tiles.push({
+                                symbol,
+                                layer,
+                                gridRow: row,
+                                gridCol: col,
+                                x: col * (this.tileSize + this.padding) + this.padding + offsetX,
+                                y: row * (this.tileSize + this.padding) + this.padding + offsetY,
+                                targetX: null,
+                                targetY: null,
+                                width: this.tileSize,
+                                height: this.tileSize
+                            });
+                        }
+                    }
+                }
+            }
+
+            generateNewTile(row, col) {
+                const existingTiles = this.tiles.filter(t => t.gridRow === row && t.gridCol === col);
+                const layer = existingTiles.length;
+                const symbol = this.symbols[Math.floor(Math.random() * this.symbols.length)];
+                const offsetX = layer * this.overlap;
+                const offsetY = layer * this.overlap;
+
+                this.tiles.push({
+                    symbol,
+                    layer,
+                    gridRow: row,
+                    gridCol: col,
+                    x: col * (this.tileSize + this.padding) + this.padding + offsetX,
+                    y: row * (this.tileSize + this.padding) + this.padding + offsetY,
+                    targetX: null,
+                    targetY: null,
+                    width: this.tileSize,
+                    height: this.tileSize
+                });
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawGrid();
+                
+                // 按层级绘制方块
+                const maxLayer = Math.max(...this.tiles.map(t => t.layer), 0);
+                for (let layer = 0; layer <= maxLayer; layer++) {
+                    this.tiles
+                        .filter(tile => tile.layer === layer)
+                        .forEach(tile => this.drawTile(tile));
+                }
+
+                if (this.animating) {
+                    requestAnimationFrame(() => this.draw());
+                }
+            }
+
+            drawGrid() {
+                this.ctx.strokeStyle = '#eee';
+                this.ctx.lineWidth = 1;
+                
+                for (let i = 0; i <= this.gridSize; i++) {
+                    const pos = i * (this.tileSize + this.padding) + this.padding;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.padding, pos);
+                    this.ctx.lineTo(this.canvas.width - this.padding, pos);
+                    this.ctx.stroke();
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pos, this.padding);
+                    this.ctx.lineTo(pos, this.canvas.height - this.padding);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawTile(tile) {
+                if (tile.targetX !== null && tile.targetY !== null) {
+                    const dx = tile.targetX - tile.x;
+                    const dy = tile.targetY - tile.y;
+                    const speed = 0.2;
+
+                    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                        tile.x += dx * speed;
+                        tile.y += dy * speed;
+                        this.animating = true;
+                    } else {
+                        tile.x = tile.targetX;
+                        tile.y = tile.targetY;
+                        tile.targetX = null;
+                        tile.targetY = null;
+                        this.animating = false;
+                    }
+                }
+
+                // 绘制方块阴影
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                this.ctx.shadowBlur = 5;
+                this.ctx.shadowOffsetX = 2;
+                this.ctx.shadowOffsetY = 2;
+
+                // 绘制方块背景
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.strokeStyle = '#666666';
+                this.ctx.lineWidth = 2;
+
+                this.roundRect(
+                    tile.x,
+                    tile.y,
+                    tile.width,
+                    tile.height,
+                    10
+                );
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                // 重置阴影
+                this.ctx.shadowColor = 'transparent';
+                this.ctx.shadowBlur = 0;
+                this.ctx.shadowOffsetX = 0;
+                this.ctx.shadowOffsetY = 0;
+
+                // 绘制符号
+                this.ctx.font = '40px Arial';
+                this.ctx.fillStyle = '#000000';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(
+                    tile.symbol,
+                    tile.x + tile.width/2,
+                    tile.y + tile.height/2
+                );
+            }
+
+            roundRect(x, y, width, height, radius) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + radius, y);
+                this.ctx.lineTo(x + width - radius, y);
+                this.ctx.arcTo(x + width, y, x + width, y + radius, radius);
+                this.ctx.lineTo(x + width, y + height - radius);
+                this.ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+                this.ctx.lineTo(x + radius, y + height);
+                this.ctx.arcTo(x, y + height, x, y + height - radius, radius);
+                this.ctx.lineTo(x, y + radius);
+                this.ctx.arcTo(x, y, x + radius, y, radius);
+                this.ctx.closePath();
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('click', (e) => {
+                    if (this.animating) return;
+
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    const clickedTile = this.findClickableTile(x, y);
+                    if (clickedTile) {
+                        this.handleTileClick(clickedTile);
+                    }
+                });
+            }
+
+            findClickableTile(x, y) {
+                // 获取点击位置的网格坐标
+                const gridCol = Math.floor((x - this.padding) / (this.tileSize + this.padding));
+                const gridRow = Math.floor((y - this.padding) / (this.tileSize + this.padding));
+                
+                // 获取该位置的所有方块
+                const tilesAtPosition = this.tiles.filter(tile => 
+                    tile.gridRow === gridRow && tile.gridCol === gridCol
+                ).sort((a, b) => b.layer - a.layer); // 从上到下排序
+
+                // 检查点击是否在每个方块的可见区域内
+                for (const tile of tilesAtPosition) {
+                    const relativeX = x - tile.x;
+                    const relativeY = y - tile.y;
+
+                    // 检查点击是否在方块范围内
+                    if (relativeX >= 0 && relativeX <= tile.width &&
+                        relativeY >= 0 && relativeY <= tile.height) {
+                        
+                        // 检查该区域是否被更上层的方块完全覆盖
+                        const isClickable = !tilesAtPosition.some(otherTile => 
+                            otherTile.layer > tile.layer &&
+                            relativeX >= (otherTile.x - tile.x) &&
+                            relativeX <= (otherTile.x - tile.x + tile.width) &&
+                            relativeY >= (otherTile.y - tile.y) &&
+                            relativeY <= (otherTile.y - tile.y + tile.height)
+                        );
+
+                        if (isClickable) {
+                            return tile;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            handleTileClick(tile) {
+                if (this.selectedTiles.length >= this.maxSlots) {
+                    alert('槽位已满！请消除相同图案或重新开始游戏。');
+                    return;
+                }
+
+                // 移除被点击的方块
+                this.tiles = this.tiles.filter(t => t !== tile);
+                this.selectedTiles.push(tile);
+
+                // 更新同一格子中剩余方块的位置
+                this.updateTilePositions(tile.gridRow, tile.gridCol);
+                
+                this.updateSlots();
+                this.checkMatch();
+                this.draw();
+
+                // 检查是否需要生成新方块
+                this.checkAndGenerateNewTiles();
+            }
+
+            updateTilePositions(row, col) {
+                const tilesInCell = this.tiles.filter(t => 
+                    t.gridRow === row && t.gridCol === col
+                );
+
+                // 重新计算每个方块的层级和位置
+                tilesInCell.sort((a, b) => a.layer - b.layer);
+                tilesInCell.forEach((tile, index) => {
+                    tile.layer = index;
+                    tile.targetX = tile.gridCol * (this.tileSize + this.padding) + this.padding + index * this.overlap;
+                    tile.targetY = tile.gridRow * (this.tileSize + this.padding) + this.padding + index * this.overlap;
+                });
+
+                if (tilesInCell.length > 0) {
+                    this.animating = true;
+                    requestAnimationFrame(() => this.draw());
+                }
+            }
+
+            checkAndGenerateNewTiles() {
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const tilesInCell = this.tiles.filter(t => 
+                            t.gridRow === row && t.gridCol === col
+                        );
+                        
+                        if (tilesInCell.length < 2) {
+                            this.generateNewTile(row, col);
+                        }
+                    }
+                }
+            }
+
+            updateSlots() {
+                this.slots.forEach((slot, index) => {
+                    slot.textContent = this.selectedTiles[index]?.symbol || '';
+                });
+            }
+
+            checkMatch() {
+                const symbolCounts = {};
+                this.selectedTiles.forEach(tile => {
+                    symbolCounts[tile.symbol] = (symbolCounts[tile.symbol] || 0) + 1;
+                });
+
+                let matched = false;
+                for (const [symbol, count] of Object.entries(symbolCounts)) {
+                    if (count >= 3) {
+                        this.selectedTiles = this.selectedTiles.filter(tile => tile.symbol !== symbol);
+                        matched = true;
+                    }
+                }
+
+                if (matched) {
+                    this.updateSlots();
+                }
+            }
+        }
+
+        // 启动游戏
+        window.onload = () => {
+            window.game = new Game();
+        };
+    </script>
+</body>
+</html>
