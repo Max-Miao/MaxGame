@@ -5,478 +5,581 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>星际逃生 - Space Escape</title>
     <style>
+        :root {
+            --grid-size: 8;
+            --cell-size: 60px;
+            --game-width: calc(var(--grid-size) * var(--cell-size));
+        }
+
         body {
             margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #000000, #1a1a2e);
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background: #000;
-            font-family: Arial, sans-serif;
-            color: #fff;
-            background-image: 
-                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
-                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
-                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
-            background-size: 550px 550px, 350px 350px, 250px 250px;
-            animation: space-background 60s linear infinite;
-        }
-        
-        @keyframes space-background {
-            from { background-position: 0 0, 0 0, 0 0; }
-            to { background-position: 550px 550px, 350px 350px, 250px 250px; }
+            overflow-x: hidden;
         }
 
-        #gameContainer {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
             padding: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 10px;
-            border: 1px solid #30f;
-            box-shadow: 0 0 20px #30f;
+            box-shadow: 0 0 20px rgba(0, 0, 255, 0.2);
+            position: relative;
+            overflow: hidden;
         }
 
-        .game-title {
-            font-size: 28px;
+        .game-header {
+            text-align: center;
             margin-bottom: 20px;
-            color: #fff;
-            text-shadow: 0 0 10px #30f;
         }
 
-        .status-panel {
+        .game-stats {
             display: flex;
             justify-content: space-between;
-            width: 100%;
             margin-bottom: 20px;
-            padding: 10px;
-            background: rgba(48, 0, 255, 0.1);
-            border-radius: 5px;
+            font-size: 1.2em;
         }
 
-        .status-item {
-            text-align: center;
-        }
-
-        .status-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #30f;
-        }
-
-        canvas {
-            border: 2px solid #30f;
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+            grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+            gap: 2px;
             background: rgba(0, 0, 0, 0.5);
-            border-radius: 5px;
-            box-shadow: 0 0 10px #30f;
+            padding: 10px;
+            border-radius: 10px;
         }
 
-        #eventPanel {
-            margin-top: 20px;
-            padding: 10px;
-            background: rgba(255, 0, 0, 0.2);
-            border-radius: 5px;
+        .cell {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            transform: scale(1.1);
+            z-index: 1;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .cell.selected {
+            background: rgba(0, 255, 255, 0.3);
+        }
+
+        .cell.matched {
+            animation: matched 0.5s ease-out;
+        }
+
+        @keyframes matched {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
             display: none;
         }
 
-        .crystal {
-            position: absolute;
-            pointer-events: none;
-            opacity: 0;
-            transition: all 0.5s ease;
+        .modal.active {
+            display: block;
         }
 
-        @keyframes glow {
-            0% { box-shadow: 0 0 5px #30f; }
-            50% { box-shadow: 0 0 20px #30f; }
-            100% { box-shadow: 0 0 5px #30f; }
+        .btn {
+            background: linear-gradient(45deg, #4a90e2, #67b26f);
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        #stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .event-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 5px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <h1 class="game-title">星际逃生</h1>
-        <div class="status-panel">
-            <div class="status-item">
-                <div>燃料</div>
-                <div id="fuel" class="status-value">100</div>
-            </div>
-            <div class="status-item">
-                <div>能量晶体</div>
-                <div id="score" class="status-value">0</div>
-            </div>
-            <div class="status-item">
-                <div>距离黑洞</div>
-                <div id="distance" class="status-value">1000</div>
+    <canvas id="stars"></canvas>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>星际逃生</h1>
+            <div class="game-stats">
+                <div>燃料: <span id="fuel">100</span></div>
+                <div>分数: <span id="score">0</span></div>
+                <div>等级: <span id="level">1</span></div>
             </div>
         </div>
-        <canvas id="gameCanvas"></canvas>
-        <div id="eventPanel"></div>
+        <div class="game-grid" id="gameGrid"></div>
+        <div class="game-controls">
+            <button class="btn" id="restartBtn">重新开始</button>
+            <button class="btn" id="watchAdBtn">观看广告获取燃料</button>
+        </div>
     </div>
 
+    <div id="gameOverModal" class="modal">
+        <h2>游戏结束</h2>
+        <p>最终得分: <span id="finalScore">0</span></p>
+        <button class="btn" onclick="location.reload()">再玩一次</button>
+    </div>
+
+    <script src="game-config.js"></script>
+    <script src="game-state.js"></script>
+    <script src="analytics.js"></script>
+    <script src="monetization.js"></script>
     <script>
+        // 游戏主类
         class SpaceGame {
             constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.gridSize = 8;
-                this.tileSize = 60;
-                this.padding = 5;
+                this.analytics = new GameAnalytics();
+                this.monetization = new GameMonetization(this.analytics);
+                this.gameState = new GameState();
                 
-                this.canvas.width = this.tileSize * this.gridSize + this.padding * (this.gridSize + 1);
-                this.canvas.height = this.canvas.width;
+                this.grid = [];
+                this.selectedCell = null;
+                this.isProcessing = false;
+                this.userId = 'user_' + Date.now();
                 
-                this.crystals = [];
-                this.selected = null;
-                this.fuel = 100;
-                this.score = 0;
-                this.distance = 1000;
-                this.isFirstLevel = true;
-                
-                this.crystalTypes = ['💎', '🌟', '⚡', '🔮', '💫'];
-                this.events = [
-                    { name: '黑洞干扰', effect: '燃料消耗加倍', duration: 3 },
-                    { name: '陨石雨', effect: '无法移动晶体', duration: 2 },
-                    { name: '空间裂缝', effect: '随机交换晶体位置', duration: 1 }
-                ];
-                
-                this.init();
-            }
-
-            init() {
-                this.generateGrid();
+                this.initializeGame();
                 this.setupEventListeners();
-                this.updateStatus();
-                this.startEventTimer();
+                this.startGameLoop();
             }
 
-            generateGrid() {
-                for (let row = 0; row < this.gridSize; row++) {
-                    for (let col = 0; col < this.gridSize; col++) {
-                        const crystal = {
-                            type: this.crystalTypes[Math.floor(Math.random() * this.crystalTypes.length)],
-                            row,
-                            col,
-                            x: col * (this.tileSize + this.padding) + this.padding,
-                            y: row * (this.tileSize + this.padding) + this.padding
-                        };
-                        this.crystals.push(crystal);
+            initializeGame() {
+                this.createGrid();
+                this.updateUI();
+                this.initializeStarfield();
+                this.analytics.trackSession(this.userId);
+            }
+
+            createGrid() {
+                const gameGrid = document.getElementById('gameGrid');
+                gameGrid.innerHTML = '';
+                this.grid = [];
+
+                for (let i = 0; i < 8; i++) {
+                    this.grid[i] = [];
+                    for (let j = 0; j < 8; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        
+                        const crystal = this.getRandomCrystal();
+                        cell.textContent = crystal;
+                        this.grid[i][j] = crystal;
+                        
+                        gameGrid.appendChild(cell);
                     }
                 }
             }
 
-            draw() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                // 绘制网格背景
-                this.ctx.strokeStyle = '#30f';
-                this.ctx.lineWidth = 1;
-                for (let i = 0; i <= this.gridSize; i++) {
-                    const pos = i * (this.tileSize + this.padding) + this.padding;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(this.padding, pos);
-                    this.ctx.lineTo(this.canvas.width - this.padding, pos);
-                    this.ctx.stroke();
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(pos, this.padding);
-                    this.ctx.lineTo(pos, this.canvas.height - this.padding);
-                    this.ctx.stroke();
-                }
-
-                // 绘制晶体
-                this.crystals.forEach(crystal => {
-                    this.ctx.font = '40px Arial';
-                    this.ctx.textAlign = 'center';
-                    this.ctx.textBaseline = 'middle';
-                    
-                    if (crystal === this.selected) {
-                        this.ctx.shadowColor = '#30f';
-                        this.ctx.shadowBlur = 20;
-                    }
-                    
-                    this.ctx.fillText(
-                        crystal.type,
-                        crystal.x + this.tileSize/2,
-                        crystal.y + this.tileSize/2
-                    );
-                    
-                    this.ctx.shadowColor = 'transparent';
-                    this.ctx.shadowBlur = 0;
-                });
+            getRandomCrystal() {
+                const types = GameConfig.resources.crystals.types;
+                return types[Math.floor(Math.random() * types.length)];
             }
 
             setupEventListeners() {
-                this.canvas.addEventListener('click', (e) => {
-                    const rect = this.canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    
-                    const col = Math.floor((x - this.padding) / (this.tileSize + this.padding));
-                    const row = Math.floor((y - this.padding) / (this.tileSize + this.padding));
-                    
-                    const clickedCrystal = this.crystals.find(c => c.row === row && c.col === col);
-                    
-                    if (clickedCrystal) {
-                        if (!this.selected) {
-                            this.selected = clickedCrystal;
-                        } else {
-                            if (this.isAdjacent(this.selected, clickedCrystal)) {
-                                this.swapCrystals(this.selected, clickedCrystal);
-                                if (!this.checkMatches()) {
-                                    this.swapCrystals(clickedCrystal, this.selected);
-                                } else {
-                                    this.consumeFuel(1);
-                                }
-                            }
-                            this.selected = null;
-                        }
-                        this.draw();
+                document.getElementById('gameGrid').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('cell')) {
+                        this.handleCellClick(e.target);
                     }
+                });
+
+                document.getElementById('watchAdBtn').addEventListener('click', () => {
+                    this.showRewardedAd();
+                });
+
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.restartGame();
                 });
             }
 
-            isAdjacent(crystal1, crystal2) {
-                const rowDiff = Math.abs(crystal1.row - crystal2.row);
-                const colDiff = Math.abs(crystal1.col - crystal2.col);
-                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            async handleCellClick(cell) {
+                if (this.isProcessing || this.gameState.metrics.fuel <= 0) return;
+
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                if (!this.selectedCell) {
+                    this.selectedCell = {row, col, element: cell};
+                    cell.classList.add('selected');
+                } else {
+                    const selectedRow = this.selectedCell.row;
+                    const selectedCol = this.selectedCell.col;
+
+                    if (this.isAdjacent(selectedRow, selectedCol, row, col)) {
+                        this.isProcessing = true;
+                        await this.swapCrystals(selectedRow, selectedCol, row, col);
+                        this.isProcessing = false;
+                    }
+
+                    this.selectedCell.element.classList.remove('selected');
+                    this.selectedCell = null;
+                }
             }
 
-            swapCrystals(crystal1, crystal2) {
-                const tempX = crystal1.x;
-                const tempY = crystal1.y;
-                const tempRow = crystal1.row;
-                const tempCol = crystal1.col;
-                
-                crystal1.x = crystal2.x;
-                crystal1.y = crystal2.y;
-                crystal1.row = crystal2.row;
-                crystal1.col = crystal2.col;
-                
-                crystal2.x = tempX;
-                crystal2.y = tempY;
-                crystal2.row = tempRow;
-                crystal2.col = tempCol;
+            async swapCrystals(row1, col1, row2, col2) {
+                // 交换水晶
+                const temp = this.grid[row1][col1];
+                this.grid[row1][col1] = this.grid[row2][col2];
+                this.grid[row2][col2] = temp;
+
+                // 更新UI
+                const cells = document.querySelectorAll('.cell');
+                const cell1 = cells[row1 * 8 + col1];
+                const cell2 = cells[row2 * 8 + col2];
+                cell1.textContent = this.grid[row1][col1];
+                cell2.textContent = this.grid[row2][col2];
+
+                // 检查匹配
+                const matches = this.checkMatches();
+                if (matches.length > 0) {
+                    await this.handleMatches(matches);
+                    this.consumeFuel(1);
+                    this.gameState.metrics.moves++;
+                    this.updateUI();
+                } else {
+                    // 如果没有匹配，换回来
+                    const temp = this.grid[row1][col1];
+                    this.grid[row1][col1] = this.grid[row2][col2];
+                    this.grid[row2][col2] = temp;
+                    cell1.textContent = this.grid[row1][col1];
+                    cell2.textContent = this.grid[row2][col2];
+                }
+            }
+
+            isAdjacent(row1, col1, row2, col2) {
+                return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
             }
 
             checkMatches() {
-                const matches = new Set();
+                const matches = [];
                 
                 // 检查行
-                for (let row = 0; row < this.gridSize; row++) {
-                    let count = 1;
-                    let type = null;
-                    for (let col = 0; col < this.gridSize; col++) {
-                        const crystal = this.crystals.find(c => c.row === row && c.col === col);
-                        if (crystal.type === type) {
-                            count++;
-                            if (count >= 3) {
-                                for (let i = 0; i < count; i++) {
-                                    const matchedCrystal = this.crystals.find(
-                                        c => c.row === row && c.col === col - i
-                                    );
-                                    matches.add(matchedCrystal);
-                                }
-                            }
-                        } else {
-                            count = 1;
-                            type = crystal.type;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 6; j++) {
+                        if (this.grid[i][j] === this.grid[i][j+1] && 
+                            this.grid[i][j] === this.grid[i][j+2]) {
+                            matches.push({row: i, col: j, type: 'horizontal', length: 3});
                         }
                     }
                 }
-                
+
                 // 检查列
-                for (let col = 0; col < this.gridSize; col++) {
-                    let count = 1;
-                    let type = null;
-                    for (let row = 0; row < this.gridSize; row++) {
-                        const crystal = this.crystals.find(c => c.row === row && c.col === col);
-                        if (crystal.type === type) {
-                            count++;
-                            if (count >= 3) {
-                                for (let i = 0; i < count; i++) {
-                                    const matchedCrystal = this.crystals.find(
-                                        c => c.row === row - i && c.col === col
-                                    );
-                                    matches.add(matchedCrystal);
-                                }
-                            }
-                        } else {
-                            count = 1;
-                            type = crystal.type;
+                for (let i = 0; i < 6; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.grid[i][j] === this.grid[i+1][j] && 
+                            this.grid[i][j] === this.grid[i+2][j]) {
+                            matches.push({row: i, col: j, type: 'vertical', length: 3});
                         }
                     }
                 }
-                
-                if (matches.size > 0) {
-                    this.handleMatches(Array.from(matches));
-                    return true;
-                }
-                return false;
+
+                return matches;
             }
 
-            handleMatches(matches) {
-                // 更新分数
-                this.score += matches.length * 10;
-                this.distance -= matches.length * 5;
-                
-                // 移除匹配的晶体
-                matches.forEach(crystal => {
-                    const index = this.crystals.indexOf(crystal);
-                    if (index > -1) {
-                        this.crystals.splice(index, 1);
+            async handleMatches(matches) {
+                // 标记匹配的水晶
+                const cells = document.querySelectorAll('.cell');
+                matches.forEach(match => {
+                    if (match.type === 'horizontal') {
+                        for (let j = 0; j < match.length; j++) {
+                            const cell = cells[match.row * 8 + (match.col + j)];
+                            cell.classList.add('matched');
+                            this.grid[match.row][match.col + j] = null;
+                        }
+                    } else {
+                        for (let i = 0; i < match.length; i++) {
+                            const cell = cells[(match.row + i) * 8 + match.col];
+                            cell.classList.add('matched');
+                            this.grid[match.row + i][match.col] = null;
+                        }
                     }
                 });
-                
-                // 生成新的晶体
+
+                // 更新分数
+                this.gameState.metrics.matches += matches.length;
+                this.gameState.metrics.score += matches.length * 
+                    GameConfig.resources.crystals.score_values['3_match'];
+
+                // 等待动画完成
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 移除匹配标记
+                cells.forEach(cell => cell.classList.remove('matched'));
+
+                // 填充空缺
                 this.fillEmptySpaces();
-                
-                // 检查是否还有可能的匹配
-                setTimeout(() => {
-                    if (!this.hasPossibleMatches()) {
-                        this.reshuffleGrid();
-                    }
-                    this.updateStatus();
-                    this.draw();
-                }, 300);
             }
 
             fillEmptySpaces() {
-                for (let col = 0; col < this.gridSize; col++) {
-                    let emptySpaces = 0;
-                    for (let row = this.gridSize - 1; row >= 0; row--) {
-                        const crystal = this.crystals.find(c => c.row === row && c.col === col);
-                        if (!crystal) {
-                            emptySpaces++;
-                        } else if (emptySpaces > 0) {
-                            crystal.row += emptySpaces;
-                            crystal.y = crystal.row * (this.tileSize + this.padding) + this.padding;
-                        }
-                    }
-                    
-                    // 在顶部添加新的晶体
-                    for (let i = 0; i < emptySpaces; i++) {
-                        const newCrystal = {
-                            type: this.crystalTypes[Math.floor(Math.random() * this.crystalTypes.length)],
-                            row: i - emptySpaces,
-                            col: col,
-                            x: col * (this.tileSize + this.padding) + this.padding,
-                            y: (i - emptySpaces) * (this.tileSize + this.padding) + this.padding
-                        };
-                        this.crystals.push(newCrystal);
-                    }
-                }
-            }
-
-            hasPossibleMatches() {
-                // 检查是否还有可能的匹配
-                for (let row = 0; row < this.gridSize; row++) {
-                    for (let col = 0; col < this.gridSize; col++) {
-                        const crystal = this.crystals.find(c => c.row === row && c.col === col);
-                        
-                        // 检查右侧交换
-                        if (col < this.gridSize - 1) {
-                            const rightCrystal = this.crystals.find(c => c.row === row && c.col === col + 1);
-                            this.swapCrystals(crystal, rightCrystal);
-                            if (this.checkMatches()) {
-                                this.swapCrystals(rightCrystal, crystal);
-                                return true;
+                // 向下移动水晶
+                for (let col = 0; col < 8; col++) {
+                    let emptyRow = 7;
+                    for (let row = 7; row >= 0; row--) {
+                        if (this.grid[row][col] !== null) {
+                            if (emptyRow !== row) {
+                                this.grid[emptyRow][col] = this.grid[row][col];
+                                this.grid[row][col] = null;
                             }
-                            this.swapCrystals(rightCrystal, crystal);
-                        }
-                        
-                        // 检查下方交换
-                        if (row < this.gridSize - 1) {
-                            const bottomCrystal = this.crystals.find(c => c.row === row + 1 && c.col === col);
-                            this.swapCrystals(crystal, bottomCrystal);
-                            if (this.checkMatches()) {
-                                this.swapCrystals(bottomCrystal, crystal);
-                                return true;
-                            }
-                            this.swapCrystals(bottomCrystal, crystal);
+                            emptyRow--;
                         }
                     }
                 }
-                return false;
-            }
 
-            reshuffleGrid() {
-                const types = this.crystals.map(c => c.type);
-                for (let i = types.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [types[i], types[j]] = [types[j], types[i]];
+                // 填充新的水晶
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.grid[i][j] === null) {
+                            this.grid[i][j] = this.getRandomCrystal();
+                        }
+                    }
                 }
-                this.crystals.forEach((crystal, index) => {
-                    crystal.type = types[index];
-                });
+
+                // 更新UI
+                const cells = document.querySelectorAll('.cell');
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        cells[i * 8 + j].textContent = this.grid[i][j];
+                    }
+                }
             }
 
             consumeFuel(amount) {
-                if (!this.isFirstLevel) {
-                    this.fuel -= amount;
-                    if (this.fuel <= 0) {
-                        this.gameOver();
-                    }
-                }
-                this.updateStatus();
-            }
-
-            updateStatus() {
-                document.getElementById('fuel').textContent = this.fuel;
-                document.getElementById('score').textContent = this.score;
-                document.getElementById('distance').textContent = this.distance;
+                this.gameState.metrics.fuel = Math.max(0, 
+                    this.gameState.metrics.fuel - amount);
                 
-                if (this.distance <= 0) {
-                    this.levelComplete();
+                if (this.gameState.metrics.fuel <= 0) {
+                    this.gameOver();
                 }
             }
 
-            startEventTimer() {
-                setInterval(() => {
-                    if (Math.random() < 0.1) { // 10%概率触发事件
-                        this.triggerRandomEvent();
-                    }
-                }, 10000);
-            }
-
-            triggerRandomEvent() {
-                const event = this.events[Math.floor(Math.random() * this.events.length)];
-                const panel = document.getElementById('eventPanel');
-                panel.style.display = 'block';
-                panel.textContent = `警告：${event.name} - ${event.effect}`;
-                
-                setTimeout(() => {
-                    panel.style.display = 'none';
-                }, event.duration * 1000);
+            async showRewardedAd() {
+                if (await this.monetization.showRewardedAd(this.userId)) {
+                    this.gameState.metrics.fuel = Math.min(
+                        this.gameState.metrics.fuel + GameConfig.resources.fuel.replenish_methods[0].amount,
+                        GameConfig.resources.fuel.max
+                    );
+                    this.updateUI();
+                }
             }
 
             gameOver() {
-                alert(`游戏结束！\n收集的能量晶体：${this.score}\n剩余距离：${this.distance}`);
-                this.restart();
+                const modal = document.getElementById('gameOverModal');
+                document.getElementById('finalScore').textContent = 
+                    this.gameState.metrics.score;
+                modal.classList.add('active');
             }
 
-            levelComplete() {
-                this.isFirstLevel = false;
-                this.fuel = 50;
-                this.distance = 1000;
-                this.score = 0;
-                alert('第一关完成！进入生存模式，燃料有限！');
-                this.restart();
+            restartGame() {
+                this.gameState = new GameState();
+                this.createGrid();
+                this.updateUI();
+                document.getElementById('gameOverModal').classList.remove('active');
             }
 
-            restart() {
-                this.crystals = [];
-                this.selected = null;
-                this.generateGrid();
-                this.updateStatus();
-                this.draw();
+            updateUI() {
+                document.getElementById('fuel').textContent = 
+                    this.gameState.metrics.fuel;
+                document.getElementById('score').textContent = 
+                    this.gameState.metrics.score;
+                document.getElementById('level').textContent = 
+                    this.gameState.adjustDifficulty();
+            }
+
+            initializeStarfield() {
+                const canvas = document.getElementById('stars');
+                const ctx = canvas.getContext('2d');
+                const stars = [];
+
+                // 设置画布大小
+                function resizeCanvas() {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                }
+
+                // 创建星星
+                function createStar() {
+                    return {
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        size: Math.random() * 2,
+                        speed: Math.random() * 3 + 1
+                    };
+                }
+
+                // 初始化星空
+                function initStars() {
+                    for (let i = 0; i < 200; i++) {
+                        stars.push(createStar());
+                    }
+                }
+
+                // 动画循环
+                function animate() {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = 'white';
+                    stars.forEach(star => {
+                        ctx.beginPath();
+                        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        star.y += star.speed;
+                        if (star.y > canvas.height) {
+                            star.y = 0;
+                            star.x = Math.random() * canvas.width;
+                        }
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+
+                window.addEventListener('resize', resizeCanvas);
+                resizeCanvas();
+                initStars();
+                animate();
+            }
+
+            startGameLoop() {
+                setInterval(() => {
+                    const difficulty = this.gameState.adjustDifficulty();
+                    const config = GameConfig.difficulty_levels[difficulty];
+                    this.consumeFuel(config.fuel_consumption);
+                    
+                    // 随机事件
+                    if (Math.random() < config.event_frequency) {
+                        this.triggerRandomEvent();
+                    }
+                }, 5000);
+            }
+
+            triggerRandomEvent() {
+                const events = Object.entries(GameConfig.events);
+                const [eventName, eventConfig] = events[
+                    Math.floor(Math.random() * events.length)
+                ];
+
+                if (Math.random() < eventConfig.probability) {
+                    this.showEventNotification(eventName);
+                    this.handleEvent(eventName, eventConfig);
+                }
+            }
+
+            showEventNotification(eventName) {
+                const notification = document.createElement('div');
+                notification.className = 'event-notification';
+                notification.textContent = `警告：${eventName}事件发生！`;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+
+            handleEvent(eventName, config) {
+                switch(config.effect) {
+                    case 'fuel_drain':
+                        this.consumeFuel(10);
+                        break;
+                    case 'board_shuffle':
+                        this.shuffleBoard();
+                        break;
+                    case 'crystal_transform':
+                        this.transformCrystals();
+                        break;
+                }
+            }
+
+            shuffleBoard() {
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        const randI = Math.floor(Math.random() * 8);
+                        const randJ = Math.floor(Math.random() * 8);
+                        
+                        const temp = this.grid[i][j];
+                        this.grid[i][j] = this.grid[randI][randJ];
+                        this.grid[randI][randJ] = temp;
+                    }
+                }
+
+                const cells = document.querySelectorAll('.cell');
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        cells[i * 8 + j].textContent = this.grid[i][j];
+                    }
+                }
+            }
+
+            transformCrystals() {
+                const cells = document.querySelectorAll('.cell');
+                const newType = this.getRandomCrystal();
+                
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (Math.random() < 0.3) {
+                            this.grid[i][j] = newType;
+                            cells[i * 8 + j].textContent = newType;
+                        }
+                    }
+                }
             }
         }
 
         // 启动游戏
         window.onload = () => {
-            window.game = new SpaceGame();
+            new SpaceGame();
         };
     </script>
 </body>
