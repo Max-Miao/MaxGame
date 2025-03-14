@@ -14,6 +14,23 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: white;
+            font-size: 16px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .game-container {
@@ -21,6 +38,8 @@
             border-radius: 20px;
             padding: 20px;
             text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
         }
 
         .tutorial {
@@ -29,6 +48,7 @@
             border-radius: 10px;
             margin-bottom: 20px;
             max-width: 500px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
         }
 
         .game-stats {
@@ -36,6 +56,11 @@
             justify-content: space-around;
             margin: 20px 0;
             font-size: 1.2em;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            width: 80%;
+            margin: 20px auto;
         }
 
         .game-grid {
@@ -57,32 +82,63 @@
             align-items: center;
             font-size: 2em;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            user-select: none;
         }
 
         .cell:hover {
             transform: scale(1.1);
             background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
         }
 
         .cell.selected {
             background: rgba(0, 255, 255, 0.3);
-            box-shadow: 0 0 10px cyan;
+            box-shadow: 0 0 15px cyan;
+            transform: scale(1.1);
+        }
+
+        .cell.matched {
+            animation: matched 0.5s ease-out;
+        }
+
+        @keyframes matched {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .cell.new {
+            animation: newCell 0.3s ease-out;
+        }
+
+        @keyframes newCell {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .btn {
             background: linear-gradient(45deg, #4a90e2, #67b26f);
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             color: white;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 1.1em;
             margin: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
         }
 
         .modal {
@@ -91,15 +147,39 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
             text-align: center;
             z-index: 100;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            animation: modalShow 0.3s ease-out;
+        }
+
+        @keyframes modalShow {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
         .modal.active {
             display: block;
+        }
+
+        .modal h2 {
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        .modal p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        #finalScore {
+            color: #67b26f;
+            font-size: 1.5em;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -136,8 +216,8 @@
         class SimpleGame {
             constructor() {
                 this.grid = [];
-                this.size = 6; // 减小棋盘大小提高性能
-                this.symbols = ['💎', '🌟', '⚡']; // 减少符号种类
+                this.size = 6;
+                this.symbols = ['💎', '🌟', '⚡'];
                 this.selected = null;
                 this.score = 0;
                 this.fuel = 100;
@@ -215,21 +295,17 @@
             async swapCrystals(row1, col1, row2, col2) {
                 this.isProcessing = true;
 
-                // 交换水晶
                 const temp = this.grid[row1][col1];
                 this.grid[row1][col1] = this.grid[row2][col2];
                 this.grid[row2][col2] = temp;
 
-                // 更新显示
                 this.updateCell(row1, col1);
                 this.updateCell(row2, col2);
 
-                // 检查是否有匹配
                 if (this.checkMatches()) {
                     this.fuel = Math.max(0, this.fuel - 1);
                     this.updateStats();
                 } else {
-                    // 如果没有匹配，换回来
                     const temp = this.grid[row1][col1];
                     this.grid[row1][col1] = this.grid[row2][col2];
                     this.grid[row2][col2] = temp;
@@ -253,7 +329,6 @@
             checkMatches() {
                 let hasMatches = false;
 
-                // 检查行
                 for (let i = 0; i < this.size; i++) {
                     for (let j = 0; j < this.size - 2; j++) {
                         if (this.grid[i][j] !== null &&
@@ -267,7 +342,6 @@
                     }
                 }
 
-                // 检查列
                 for (let i = 0; i < this.size - 2; i++) {
                     for (let j = 0; j < this.size; j++) {
                         if (this.grid[i][j] !== null &&
@@ -291,19 +365,30 @@
             clearMatch(row, col, type) {
                 if (type === 'horizontal') {
                     for (let j = 0; j < 3; j++) {
+                        const cell = document.querySelector(
+                            `.cell[data-row="${row}"][data-col="${col + j}"]`
+                        );
+                        cell.classList.add('matched');
                         this.grid[row][col + j] = null;
-                        this.updateCell(row, col + j);
                     }
                 } else {
                     for (let i = 0; i < 3; i++) {
+                        const cell = document.querySelector(
+                            `.cell[data-row="${row + i}"][data-col="${col}"]`
+                        );
+                        cell.classList.add('matched');
                         this.grid[row + i][col] = null;
-                        this.updateCell(row + i, col);
                     }
                 }
+
+                setTimeout(() => {
+                    document.querySelectorAll('.cell.matched').forEach(cell => {
+                        cell.classList.remove('matched');
+                    });
+                }, 500);
             }
 
             fillEmptySpaces() {
-                // 向下移动水晶
                 for (let col = 0; col < this.size; col++) {
                     let emptyRow = this.size - 1;
                     for (let row = this.size - 1; row >= 0; row--) {
@@ -311,24 +396,37 @@
                             if (emptyRow !== row) {
                                 this.grid[emptyRow][col] = this.grid[row][col];
                                 this.grid[row][col] = null;
+                                const cell = document.querySelector(
+                                    `.cell[data-row="${emptyRow}"][data-col="${col}"]`
+                                );
+                                cell.textContent = this.grid[emptyRow][col];
+                                cell.classList.add('new');
                             }
                             emptyRow--;
                         }
                     }
                 }
 
-                // 填充新的水晶
                 for (let i = 0; i < this.size; i++) {
                     for (let j = 0; j < this.size; j++) {
                         if (this.grid[i][j] === null) {
                             this.grid[i][j] = this.getRandomSymbol();
-                            this.updateCell(i, j);
+                            const cell = document.querySelector(
+                                `.cell[data-row="${i}"][data-col="${j}"]`
+                            );
+                            cell.textContent = this.grid[i][j];
+                            cell.classList.add('new');
                         }
                     }
                 }
 
-                // 检查新的匹配
-                setTimeout(() => this.checkMatches(), 300);
+                setTimeout(() => {
+                    document.querySelectorAll('.cell.new').forEach(cell => {
+                        cell.classList.remove('new');
+                    });
+                }, 300);
+
+                setTimeout(() => this.checkMatches(), 400);
             }
 
             getRandomSymbol() {
@@ -336,18 +434,51 @@
             }
 
             updateStats() {
-                document.getElementById('fuel').textContent = this.fuel;
-                document.getElementById('score').textContent = this.score;
+                const fuelEl = document.getElementById('fuel');
+                const scoreEl = document.getElementById('score');
+                
+                fuelEl.style.transition = 'color 0.3s ease';
+                scoreEl.style.transition = 'color 0.3s ease';
+                
+                if (this.fuel <= 20) {
+                    fuelEl.style.color = '#ff4444';
+                } else {
+                    fuelEl.style.color = '#fff';
+                }
+                
+                fuelEl.textContent = this.fuel;
+                scoreEl.textContent = this.score;
             }
 
             addFuel(amount) {
+                const oldFuel = this.fuel;
                 this.fuel = Math.min(100, this.fuel + amount);
+                
+                if (this.fuel > oldFuel) {
+                    const fuelEl = document.getElementById('fuel');
+                    fuelEl.style.color = '#44ff44';
+                    setTimeout(() => {
+                        fuelEl.style.color = '#fff';
+                    }, 500);
+                }
+                
                 this.updateStats();
             }
 
             gameOver() {
-                document.getElementById('finalScore').textContent = this.score;
-                document.getElementById('gameOverModal').classList.add('active');
+                const modal = document.getElementById('gameOverModal');
+                const finalScore = document.getElementById('finalScore');
+                finalScore.textContent = this.score;
+                modal.classList.add('active');
+                
+                const highScore = localStorage.getItem('highScore') || 0;
+                if (this.score > highScore) {
+                    localStorage.setItem('highScore', this.score);
+                    const newRecord = document.createElement('p');
+                    newRecord.textContent = '新纪录！🎉';
+                    newRecord.style.color = '#44ff44';
+                    finalScore.parentNode.insertBefore(newRecord, finalScore.nextSibling);
+                }
             }
 
             restart() {
@@ -355,10 +486,13 @@
                 this.fuel = 100;
                 document.getElementById('gameOverModal').classList.remove('active');
                 this.initGame();
+                
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.classList.remove('matched', 'new', 'selected');
+                });
             }
         }
 
-        // 启动游戏
         const game = new SimpleGame();
     </script>
 </body>
