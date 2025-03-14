@@ -3,56 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>星际逃生 - Space Escape</title>
+    <title>星际逃生 - 简单三消</title>
     <style>
-        :root {
-            --grid-size: 8;
-            --cell-size: 60px;
-            --game-width: calc(var(--grid-size) * var(--cell-size));
-        }
-
         body {
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #000000, #1a1a2e);
+            background: #000;
             color: #fff;
             font-family: 'Arial', sans-serif;
-            min-height: 100vh;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            overflow-x: hidden;
         }
 
         .game-container {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 20px;
-            box-shadow: 0 0 20px rgba(0, 0, 255, 0.2);
-            position: relative;
-            overflow: hidden;
+            text-align: center;
         }
 
-        .game-header {
-            text-align: center;
+        .tutorial {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
             margin-bottom: 20px;
+            max-width: 500px;
         }
 
         .game-stats {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            justify-content: space-around;
+            margin: 20px 0;
             font-size: 1.2em;
         }
 
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(var(--grid-size), var(--cell-size));
-            grid-template-rows: repeat(var(--grid-size), var(--cell-size));
-            gap: 2px;
+            grid-template-columns: repeat(6, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 4px;
             background: rgba(0, 0, 0, 0.5);
             padding: 10px;
             border-radius: 10px;
+            margin: 0 auto;
         }
 
         .cell {
@@ -63,46 +57,17 @@
             align-items: center;
             font-size: 2em;
             cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            transition: transform 0.2s;
         }
 
         .cell:hover {
             transform: scale(1.1);
-            z-index: 1;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.2);
         }
 
         .cell.selected {
             background: rgba(0, 255, 255, 0.3);
-        }
-
-        .cell.matched {
-            animation: matched 0.5s ease-out;
-        }
-
-        @keyframes matched {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); opacity: 0.8; }
-            100% { transform: scale(0); opacity: 0; }
-        }
-
-        .modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 100;
-            display: none;
-        }
-
-        .modal.active {
-            display: block;
+            box-shadow: 0 0 10px cyan;
         }
 
         .btn {
@@ -113,92 +78,78 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 1em;
-            margin: 5px;
-            transition: all 0.3s ease;
+            margin: 10px;
         }
 
         .btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            opacity: 0.9;
         }
 
-        #stars {
+        .modal {
+            display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
         }
 
-        .event-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 0, 0, 0.8);
-            padding: 10px 20px;
-            border-radius: 5px;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+        .modal.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <canvas id="stars"></canvas>
     <div class="game-container">
-        <div class="game-header">
-            <h1>星际逃生</h1>
-            <div class="game-stats">
-                <div>燃料: <span id="fuel">100</span></div>
-                <div>分数: <span id="score">0</span></div>
-                <div>等级: <span id="level">1</span></div>
-            </div>
+        <h1>星际逃生</h1>
+        
+        <div class="tutorial">
+            <h3>游戏说明：</h3>
+            <p>1. 点击并交换相邻的两个水晶 ⬅️➡️</p>
+            <p>2. 连接三个相同水晶可以消除 ⭐⭐⭐</p>
+            <p>3. 每次移动会消耗燃料 ⛽</p>
+            <p>4. 燃料耗尽游戏结束 🔚</p>
         </div>
+
+        <div class="game-stats">
+            <div>燃料: <span id="fuel">100</span></div>
+            <div>分数: <span id="score">0</span></div>
+        </div>
+
         <div class="game-grid" id="gameGrid"></div>
-        <div class="game-controls">
-            <button class="btn" id="restartBtn">重新开始</button>
-            <button class="btn" id="watchAdBtn">观看广告获取燃料</button>
-        </div>
+
+        <button class="btn" id="restartBtn">重新开始</button>
+        <button class="btn" id="helpBtn">获取燃料</button>
     </div>
 
     <div id="gameOverModal" class="modal">
         <h2>游戏结束</h2>
         <p>最终得分: <span id="finalScore">0</span></p>
-        <button class="btn" onclick="location.reload()">再玩一次</button>
+        <button class="btn" onclick="game.restart()">再玩一次</button>
     </div>
 
-    <script src="game-config.js"></script>
-    <script src="game-state.js"></script>
-    <script src="analytics.js"></script>
-    <script src="monetization.js"></script>
     <script>
-        // 游戏主类
-        class SpaceGame {
+        class SimpleGame {
             constructor() {
-                this.analytics = new GameAnalytics();
-                this.monetization = new GameMonetization(this.analytics);
-                this.gameState = new GameState();
-                
                 this.grid = [];
-                this.selectedCell = null;
+                this.size = 6; // 减小棋盘大小提高性能
+                this.symbols = ['💎', '🌟', '⚡']; // 减少符号种类
+                this.selected = null;
+                this.score = 0;
+                this.fuel = 100;
                 this.isProcessing = false;
-                this.userId = 'user_' + Date.now();
-                
-                this.initializeGame();
-                this.setupEventListeners();
-                this.startGameLoop();
+
+                this.initGame();
+                this.setupEvents();
             }
 
-            initializeGame() {
+            initGame() {
                 this.createGrid();
-                this.updateUI();
-                this.initializeStarfield();
-                this.analytics.trackSession(this.userId);
+                this.updateStats();
             }
 
             createGrid() {
@@ -206,95 +157,54 @@
                 gameGrid.innerHTML = '';
                 this.grid = [];
 
-                for (let i = 0; i < 8; i++) {
+                for (let i = 0; i < this.size; i++) {
                     this.grid[i] = [];
-                    for (let j = 0; j < 8; j++) {
+                    for (let j = 0; j < this.size; j++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
                         cell.dataset.row = i;
                         cell.dataset.col = j;
                         
-                        const crystal = this.getRandomCrystal();
-                        cell.textContent = crystal;
-                        this.grid[i][j] = crystal;
+                        const symbol = this.getRandomSymbol();
+                        cell.textContent = symbol;
+                        this.grid[i][j] = symbol;
                         
                         gameGrid.appendChild(cell);
                     }
                 }
             }
 
-            getRandomCrystal() {
-                const types = GameConfig.resources.crystals.types;
-                return types[Math.floor(Math.random() * types.length)];
-            }
-
-            setupEventListeners() {
+            setupEvents() {
                 document.getElementById('gameGrid').addEventListener('click', (e) => {
                     if (e.target.classList.contains('cell')) {
-                        this.handleCellClick(e.target);
+                        this.handleClick(e.target);
                     }
                 });
 
-                document.getElementById('watchAdBtn').addEventListener('click', () => {
-                    this.showRewardedAd();
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.restart();
                 });
 
-                document.getElementById('restartBtn').addEventListener('click', () => {
-                    this.restartGame();
+                document.getElementById('helpBtn').addEventListener('click', () => {
+                    this.addFuel(20);
                 });
             }
 
-            async handleCellClick(cell) {
-                if (this.isProcessing || this.gameState.metrics.fuel <= 0) return;
+            handleClick(cell) {
+                if (this.isProcessing || this.fuel <= 0) return;
 
                 const row = parseInt(cell.dataset.row);
                 const col = parseInt(cell.dataset.col);
 
-                if (!this.selectedCell) {
-                    this.selectedCell = {row, col, element: cell};
+                if (!this.selected) {
+                    this.selected = {row, col, element: cell};
                     cell.classList.add('selected');
                 } else {
-                    const selectedRow = this.selectedCell.row;
-                    const selectedCol = this.selectedCell.col;
-
-                    if (this.isAdjacent(selectedRow, selectedCol, row, col)) {
-                        this.isProcessing = true;
-                        await this.swapCrystals(selectedRow, selectedCol, row, col);
-                        this.isProcessing = false;
+                    if (this.isAdjacent(this.selected.row, this.selected.col, row, col)) {
+                        this.swapCrystals(this.selected.row, this.selected.col, row, col);
                     }
-
-                    this.selectedCell.element.classList.remove('selected');
-                    this.selectedCell = null;
-                }
-            }
-
-            async swapCrystals(row1, col1, row2, col2) {
-                // 交换水晶
-                const temp = this.grid[row1][col1];
-                this.grid[row1][col1] = this.grid[row2][col2];
-                this.grid[row2][col2] = temp;
-
-                // 更新UI
-                const cells = document.querySelectorAll('.cell');
-                const cell1 = cells[row1 * 8 + col1];
-                const cell2 = cells[row2 * 8 + col2];
-                cell1.textContent = this.grid[row1][col1];
-                cell2.textContent = this.grid[row2][col2];
-
-                // 检查匹配
-                const matches = this.checkMatches();
-                if (matches.length > 0) {
-                    await this.handleMatches(matches);
-                    this.consumeFuel(1);
-                    this.gameState.metrics.moves++;
-                    this.updateUI();
-                } else {
-                    // 如果没有匹配，换回来
-                    const temp = this.grid[row1][col1];
-                    this.grid[row1][col1] = this.grid[row2][col2];
-                    this.grid[row2][col2] = temp;
-                    cell1.textContent = this.grid[row1][col1];
-                    cell2.textContent = this.grid[row2][col2];
+                    this.selected.element.classList.remove('selected');
+                    this.selected = null;
                 }
             }
 
@@ -302,71 +212,101 @@
                 return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
             }
 
+            async swapCrystals(row1, col1, row2, col2) {
+                this.isProcessing = true;
+
+                // 交换水晶
+                const temp = this.grid[row1][col1];
+                this.grid[row1][col1] = this.grid[row2][col2];
+                this.grid[row2][col2] = temp;
+
+                // 更新显示
+                this.updateCell(row1, col1);
+                this.updateCell(row2, col2);
+
+                // 检查是否有匹配
+                if (this.checkMatches()) {
+                    this.fuel = Math.max(0, this.fuel - 1);
+                    this.updateStats();
+                } else {
+                    // 如果没有匹配，换回来
+                    const temp = this.grid[row1][col1];
+                    this.grid[row1][col1] = this.grid[row2][col2];
+                    this.grid[row2][col2] = temp;
+                    
+                    this.updateCell(row1, col1);
+                    this.updateCell(row2, col2);
+                }
+
+                this.isProcessing = false;
+
+                if (this.fuel <= 0) {
+                    this.gameOver();
+                }
+            }
+
+            updateCell(row, col) {
+                const cells = document.querySelectorAll('.cell');
+                cells[row * this.size + col].textContent = this.grid[row][col];
+            }
+
             checkMatches() {
-                const matches = [];
-                
+                let hasMatches = false;
+
                 // 检查行
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 6; j++) {
-                        if (this.grid[i][j] === this.grid[i][j+1] && 
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size - 2; j++) {
+                        if (this.grid[i][j] !== null &&
+                            this.grid[i][j] === this.grid[i][j+1] &&
                             this.grid[i][j] === this.grid[i][j+2]) {
-                            matches.push({row: i, col: j, type: 'horizontal', length: 3});
+                            
+                            this.score += 10;
+                            this.clearMatch(i, j, 'horizontal');
+                            hasMatches = true;
                         }
                     }
                 }
 
                 // 检查列
-                for (let i = 0; i < 6; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        if (this.grid[i][j] === this.grid[i+1][j] && 
+                for (let i = 0; i < this.size - 2; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (this.grid[i][j] !== null &&
+                            this.grid[i][j] === this.grid[i+1][j] &&
                             this.grid[i][j] === this.grid[i+2][j]) {
-                            matches.push({row: i, col: j, type: 'vertical', length: 3});
+                            
+                            this.score += 10;
+                            this.clearMatch(i, j, 'vertical');
+                            hasMatches = true;
                         }
                     }
                 }
 
-                return matches;
+                if (hasMatches) {
+                    setTimeout(() => this.fillEmptySpaces(), 300);
+                }
+
+                return hasMatches;
             }
 
-            async handleMatches(matches) {
-                // 标记匹配的水晶
-                const cells = document.querySelectorAll('.cell');
-                matches.forEach(match => {
-                    if (match.type === 'horizontal') {
-                        for (let j = 0; j < match.length; j++) {
-                            const cell = cells[match.row * 8 + (match.col + j)];
-                            cell.classList.add('matched');
-                            this.grid[match.row][match.col + j] = null;
-                        }
-                    } else {
-                        for (let i = 0; i < match.length; i++) {
-                            const cell = cells[(match.row + i) * 8 + match.col];
-                            cell.classList.add('matched');
-                            this.grid[match.row + i][match.col] = null;
-                        }
+            clearMatch(row, col, type) {
+                if (type === 'horizontal') {
+                    for (let j = 0; j < 3; j++) {
+                        this.grid[row][col + j] = null;
+                        this.updateCell(row, col + j);
                     }
-                });
-
-                // 更新分数
-                this.gameState.metrics.matches += matches.length;
-                this.gameState.metrics.score += matches.length * 
-                    GameConfig.resources.crystals.score_values['3_match'];
-
-                // 等待动画完成
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // 移除匹配标记
-                cells.forEach(cell => cell.classList.remove('matched'));
-
-                // 填充空缺
-                this.fillEmptySpaces();
+                } else {
+                    for (let i = 0; i < 3; i++) {
+                        this.grid[row + i][col] = null;
+                        this.updateCell(row + i, col);
+                    }
+                }
             }
 
             fillEmptySpaces() {
                 // 向下移动水晶
-                for (let col = 0; col < 8; col++) {
-                    let emptyRow = 7;
-                    for (let row = 7; row >= 0; row--) {
+                for (let col = 0; col < this.size; col++) {
+                    let emptyRow = this.size - 1;
+                    for (let row = this.size - 1; row >= 0; row--) {
                         if (this.grid[row][col] !== null) {
                             if (emptyRow !== row) {
                                 this.grid[emptyRow][col] = this.grid[row][col];
@@ -378,209 +318,48 @@
                 }
 
                 // 填充新的水晶
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
                         if (this.grid[i][j] === null) {
-                            this.grid[i][j] = this.getRandomCrystal();
+                            this.grid[i][j] = this.getRandomSymbol();
+                            this.updateCell(i, j);
                         }
                     }
                 }
 
-                // 更新UI
-                const cells = document.querySelectorAll('.cell');
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        cells[i * 8 + j].textContent = this.grid[i][j];
-                    }
-                }
+                // 检查新的匹配
+                setTimeout(() => this.checkMatches(), 300);
             }
 
-            consumeFuel(amount) {
-                this.gameState.metrics.fuel = Math.max(0, 
-                    this.gameState.metrics.fuel - amount);
-                
-                if (this.gameState.metrics.fuel <= 0) {
-                    this.gameOver();
-                }
+            getRandomSymbol() {
+                return this.symbols[Math.floor(Math.random() * this.symbols.length)];
             }
 
-            async showRewardedAd() {
-                if (await this.monetization.showRewardedAd(this.userId)) {
-                    this.gameState.metrics.fuel = Math.min(
-                        this.gameState.metrics.fuel + GameConfig.resources.fuel.replenish_methods[0].amount,
-                        GameConfig.resources.fuel.max
-                    );
-                    this.updateUI();
-                }
+            updateStats() {
+                document.getElementById('fuel').textContent = this.fuel;
+                document.getElementById('score').textContent = this.score;
+            }
+
+            addFuel(amount) {
+                this.fuel = Math.min(100, this.fuel + amount);
+                this.updateStats();
             }
 
             gameOver() {
-                const modal = document.getElementById('gameOverModal');
-                document.getElementById('finalScore').textContent = 
-                    this.gameState.metrics.score;
-                modal.classList.add('active');
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOverModal').classList.add('active');
             }
 
-            restartGame() {
-                this.gameState = new GameState();
-                this.createGrid();
-                this.updateUI();
+            restart() {
+                this.score = 0;
+                this.fuel = 100;
                 document.getElementById('gameOverModal').classList.remove('active');
-            }
-
-            updateUI() {
-                document.getElementById('fuel').textContent = 
-                    this.gameState.metrics.fuel;
-                document.getElementById('score').textContent = 
-                    this.gameState.metrics.score;
-                document.getElementById('level').textContent = 
-                    this.gameState.adjustDifficulty();
-            }
-
-            initializeStarfield() {
-                const canvas = document.getElementById('stars');
-                const ctx = canvas.getContext('2d');
-                const stars = [];
-
-                // 设置画布大小
-                function resizeCanvas() {
-                    canvas.width = window.innerWidth;
-                    canvas.height = window.innerHeight;
-                }
-
-                // 创建星星
-                function createStar() {
-                    return {
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
-                        size: Math.random() * 2,
-                        speed: Math.random() * 3 + 1
-                    };
-                }
-
-                // 初始化星空
-                function initStars() {
-                    for (let i = 0; i < 200; i++) {
-                        stars.push(createStar());
-                    }
-                }
-
-                // 动画循环
-                function animate() {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    ctx.fillStyle = 'white';
-                    stars.forEach(star => {
-                        ctx.beginPath();
-                        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        star.y += star.speed;
-                        if (star.y > canvas.height) {
-                            star.y = 0;
-                            star.x = Math.random() * canvas.width;
-                        }
-                    });
-                    
-                    requestAnimationFrame(animate);
-                }
-
-                window.addEventListener('resize', resizeCanvas);
-                resizeCanvas();
-                initStars();
-                animate();
-            }
-
-            startGameLoop() {
-                setInterval(() => {
-                    const difficulty = this.gameState.adjustDifficulty();
-                    const config = GameConfig.difficulty_levels[difficulty];
-                    this.consumeFuel(config.fuel_consumption);
-                    
-                    // 随机事件
-                    if (Math.random() < config.event_frequency) {
-                        this.triggerRandomEvent();
-                    }
-                }, 5000);
-            }
-
-            triggerRandomEvent() {
-                const events = Object.entries(GameConfig.events);
-                const [eventName, eventConfig] = events[
-                    Math.floor(Math.random() * events.length)
-                ];
-
-                if (Math.random() < eventConfig.probability) {
-                    this.showEventNotification(eventName);
-                    this.handleEvent(eventName, eventConfig);
-                }
-            }
-
-            showEventNotification(eventName) {
-                const notification = document.createElement('div');
-                notification.className = 'event-notification';
-                notification.textContent = `警告：${eventName}事件发生！`;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
-            }
-
-            handleEvent(eventName, config) {
-                switch(config.effect) {
-                    case 'fuel_drain':
-                        this.consumeFuel(10);
-                        break;
-                    case 'board_shuffle':
-                        this.shuffleBoard();
-                        break;
-                    case 'crystal_transform':
-                        this.transformCrystals();
-                        break;
-                }
-            }
-
-            shuffleBoard() {
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        const randI = Math.floor(Math.random() * 8);
-                        const randJ = Math.floor(Math.random() * 8);
-                        
-                        const temp = this.grid[i][j];
-                        this.grid[i][j] = this.grid[randI][randJ];
-                        this.grid[randI][randJ] = temp;
-                    }
-                }
-
-                const cells = document.querySelectorAll('.cell');
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        cells[i * 8 + j].textContent = this.grid[i][j];
-                    }
-                }
-            }
-
-            transformCrystals() {
-                const cells = document.querySelectorAll('.cell');
-                const newType = this.getRandomCrystal();
-                
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        if (Math.random() < 0.3) {
-                            this.grid[i][j] = newType;
-                            cells[i * 8 + j].textContent = newType;
-                        }
-                    }
-                }
+                this.initGame();
             }
         }
 
         // 启动游戏
-        window.onload = () => {
-            new SpaceGame();
-        };
+        const game = new SimpleGame();
     </script>
 </body>
 </html>
